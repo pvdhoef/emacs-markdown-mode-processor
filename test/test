@@ -1,0 +1,3 @@
+#! /bin/bash
+
+../md2html --debug gfm-test.md output.html

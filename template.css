@@ -1,0 +1,157 @@
+/* CSS Template for Pandoc
+ *
+ * Based on `pandoc --print-default-data-file templates/styles.html`.
+ */
+
+${ if(document-css) }
+
+html {
+${ if(mainfont) }
+  font-family: ${ mainfont };
+${ endif }
+${ if(fontsize) }
+    font-size: ${ fontsize };
+${ endif }
+${ if(linestretch) }
+    line-height: ${ linestretch };
+${ endif }
+${ if(fontcolor) }
+    color: ${ fontcolor };
+${ endif }
+${ if(backgroundcolor) }
+    background-color: ${ backgroundcolor };
+${ endif }
+}
+
+body {
+${ if(maxwidth) }
+    max-width: ${ maxwidth };
+${ endif }
+${ if(margin-left) }
+    padding-left: ${ margin-left };
+${ endif }
+${ if(margin-right) }
+    padding-righ: ${ margin-right };
+${ endif }
+${ if(margin-top) }
+    padding-top: ${ margin-top };
+${ endif }
+${ if(margin-bottom) }
+    padding-bottom: ${ margin-bottom };
+${ endif }
+}
+
+a {
+${ if(linkcolor) }
+    color: ${ linkcolor };
+${ endif }
+}
+
+a:visited {
+${ if(linkcolor) }
+  color: ${ linkcolor };
+${ endif }
+}
+
+blockquote {
+  color: #999999;
+}
+
+code {
+${ if(monobackgroundcolor) }
+  background-color: ${ monobackgroundcolor };
+${ endif }
+}
+
+pre {
+${ if(monobackgroundcolor) }
+    background-color: ${ monobackgroundcolor };
+${ else }
+    /* Background color for `pre` is not strictly necessary when `INDENT_PRE` is set in `md2html` */
+    /* background-color: #252526; /* `bg-light` in `emacs-init.el` */
+${ endif }
+}
+
+hr {
+  /* Color for `shr-hr-line` characters */
+  color: #555555; /* `bg-light-box` in `emacs-init.el` */
+}
+
+table {
+  /* Color for `shr-table-horizontal-line` characters  */
+  /* color: #555555; /* `bg-light-box` in `emacs-init.el` */
+}
+
+th {
+  /* Reset to default after altering in `table` */
+  /* color: #d4d4d4; /* `fg-color` in `emacs-init.el` */
+}
+
+td {
+  /* Reset to default after altering in `table` */
+  /* color: #d4d4d4; /* `fg-color` in `emacs-init.el` */
+}
+
+${ endif } /* if(document-css) */
+
+${ if(quotes) }
+    q {
+      quotes: "“" "”" "‘" "’";
+    }
+${ endif }
+
+${ if(displaymath-css) }
+    .display.math {
+      display: block;
+      text-align: center;
+      margin: 0.5rem auto;
+    }
+${ endif }
+
+/* CSS for syntax highlighting
+ *
+ * Based on VScode: View > Command Pallette -> Developer: Generate Color Theme from Current Settings.
+ * For further inspiration: https://github.com/ianyepan/vscode-dark-plus-emacs-theme/blob/master/vscode-dark-plus-theme.el.
+ */
+
+code span.al { color: #ce9178; } /* Alert */
+code span.an { color: #888888; } /* Annotation, doc-alt */
+code span.at { color: #d4d4d4; } /* Attribute, fg1, default fg */
+code span.bn { color: #44aa43; } /* BaseN */
+code span.bu { color: #c586c0; } /* BuiltIn */
+code span.cf { color: #43a8ed; } /* ControlFlow */
+code span.ch { color: #569cd6; } /* Char, const */
+code span.cn { color: #569cd6; } /* Constant, const */
+code span.co { color: #6a9955; } /* Comment */
+code span.do { color: #888888; } /* Documentation */
+code span.dt { color: #4ec9b0; } /* DataType, type */
+code span.dv { color: #b5cea8; } /* DecVal, numeric */
+code span.er { color: #ce9178; } /* Error, ms-orange */
+code span.ex { color: #ffffff; } /* Extension */
+code span.fl { color: #b5cea8; } /* Float, numeric */
+code span.fu { color: #dcdcaa; } /* Function */
+code span.im { color: #D4D4D4; } /* Import */
+code span.in { color: #0066ff; } /* Information */
+code span.kw { color: #569cd6; } /* Keyword */
+code span.op { color: #d4d4d4; } /* Operator, fg1, default fg */
+code span.pp { color: #569CD6; } /* Preprocessor */
+code span.sc { color: #ce9178; } /* SpecialChar */
+code span.ss { color: #ce9178; } /* SpecialString */
+code span.st { color: #ce9178; } /* String, str */
+code span.va { color: #9cdcfe; } /* Variable, var */
+code span.vs { color: #ce9178; } /* VerbatimString */
+code span.wa { color: #f16969; } /* Warning, warning */
+
+${ if(false) }
+${ if(highlighting-css) }
+/* CSS for syntax highlighting */
+${ highlighting-css }
+${ endif }
+${ endif }
+
+${ if(csl-css) }
+/* CSS for citations */
+${ styles.citations.html() }
+${ endif }
+
+/* End of CSS Template for Pandoc */

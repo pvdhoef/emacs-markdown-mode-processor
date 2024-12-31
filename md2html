@@ -1,0 +1,461 @@
+#!/usr/local/bin/tclsh
+
+# Tool that can be configured with Emacs Markdown Mode via its `markdown-command`.
+# Pandoc and gfm have different conventions around document titles.
+# See: https://stackoverflow.com/questions/17097894/markdown-tag-for-document-title.
+
+# https://emacs.stackexchange.com/questions/2955/how-to-customize-background-color-for-some-web-pages-opened-with-eww
+
+# Alternative css inliners:
+# - https://pypi.org/project/css-inline/
+
+namespace eval ::Main {
+
+variable DEBUG 1
+variable CMDNAME "md2html"
+
+variable INDENT_PRE 1
+variable EXTRA_BREATHING_SPACE_FOR_PRE 0
+variable HR_BEFORE_AND_AFTER_PRE 0
+variable BR_AFTER_TABLE 1
+
+proc usage {} {
+
+    # Syntax according to http://docopt.org/.
+    variable CMDNAME
+    puts ""
+    puts "usage:"
+    puts "  $CMDNAME \[options\] \[<input> \[<output>\]\]"
+    puts ""
+    puts "<input>      Input file, reads from stdin if not specified"
+    puts "<output>     Output file, writes to stdout if not specified"
+    puts "--debug      Saves intermediate output, only when output file is specified"
+    puts "--help, -h   Prints usage"
+    puts ""
+}
+
+proc main {args} {
+
+    set inputFile ""
+    set outputFile ""
+    set debug 0
+    set argc [llength $args]
+
+    set index 0
+    while {$index < $argc} {
+        set arg [lindex $args $index]
+        incr index
+
+        if {[string index $arg 0] == "-"} {
+
+            if {$inputFile == ""} {
+                # Process options that precede the input file.
+                if {$arg == "--help" || $arg == "-h"} {
+                    usage
+                    return
+                } elseif {$arg == "--debug"} {
+                    set debug 1
+                } else {
+                    throw [list EX IllegalArgument $arg] "Invalid option '$arg'"
+                }
+            } else {
+                throw [list EX IllegalArgument $arg] "Invalid option '$arg'"
+            }
+        } elseif {$inputFile == ""} {
+            # The first non-option argument is the input file.
+            set inputFile $arg
+        } elseif {$outputFile == ""} {
+            # The second non-option argument is the output file.
+            set outputFile $arg
+        } else {
+            throw [list EX IllegalArgument $arg] "Invalid argument '$arg'"
+        }
+    }
+
+    if {$inputFile != ""} {
+        set inputFile [file normalize $inputFile]
+
+        if ![file isfile $inputFile] {
+            throw [list EX IllegalArgument $inputFile] "Unable to find '$inputFile'"
+        }
+    } else {
+        set inputFile "<@stdin"
+    }
+
+    if {$outputFile != ""} {
+        set outputFile [file normalize $outputFile]
+    } elseif $debug {
+        # Debug can't be used if no output file has been specified.
+        throw [list EX IllegalArgument $debug] "--debug can't be used without output file"
+    }
+
+    global argv0
+    set scriptName $argv0
+    set scriptDir [file normalize [file dirname $scriptName]]
+
+    # HTML template is derived from: pandoc --print-default-template html
+    set htmlTemplate [string cat $scriptDir "/template.html" ]
+    if ![file isfile $htmlTemplate] {
+        throw [list EX InternalError] "Unable to find '$htmlTemplate'"
+    }
+
+    set pandocCmd [list "pandoc"]
+    lappend pandocCmd "--from" "gfm"
+    lappend pandocCmd "--to" "html"
+    lappend pandocCmd "--standalone"
+    # Provide a dummy title to silence Pandoc's warning about missing metadata title.
+    # The template doesn't do anything with the title.
+    lappend pandocCmd "--metadata=title:md"
+    lappend pandocCmd "--template" $htmlTemplate
+    lappend pandocCmd "--highlight-style" "espresso"
+    # Can create a custom highligth style based on e.g. `pandoc --print-highlight-style pygments`
+
+    set output [exec {*}$pandocCmd $inputFile]
+
+    if $debug {
+        set fd [open [string cat $outputFile "-pandoc.html"] w]
+        puts $fd $output
+        close $fd
+    }
+
+    set output [processHtml $output]
+    if {$outputFile == ""} {
+        puts $output
+    } else {
+        set fd [open $outputFile w]
+        puts $fd $output
+        close $fd
+    }
+
+    # execJuice $output $outputFile
+}
+
+variable htmlTrail
+variable htmlStyles
+variable htmlOutput
+
+proc processHtml {html} {
+    package require htmlparse
+
+    # set html [::htmlparse::mapEscapes $html]
+    variable htmlTrail
+    variable htmlStyles
+    variable htmlOutput
+
+    set htmlTrail [list]
+    set htmlStyles [dict create]
+    set htmlOutput ""
+
+    ::htmlparse::parse -cmd ::Main::processHtmlStylesheet $html
+    ::htmlparse::parse -cmd ::Main::processHtmlElement $html
+
+    return $htmlOutput
+}
+
+proc updateHtmlTrail {tag slash} {
+
+    variable htmlTrail
+    if {$slash == ""} {
+        lappend htmlTrail $tag
+    } else {
+        set etag [lindex $htmlTrail end]
+        if {$etag != $tag} {
+            throw [list EX InternalError] "Invalid html trail, expecting </$tag> but found </$etag>"
+        }
+        set htmlTrail [lreplace $htmlTrail end end]
+    }
+    # puts "> $htmlTrail"
+}
+
+proc processHtmlStylesheet {tag slash params textBehindTheTag} {
+    # puts "<$slash$tag>$textBehindTheTag"
+    variable htmlTrail
+    if {$tag == "style" && $slash == "" && [lindex $htmlTrail end] == "head"} {
+        processHtmlStyles $textBehindTheTag
+    }
+    updateHtmlTrail $tag $slash
+}
+
+proc processHtmlElement {tag slash params textBehindTheTag} {
+
+    variable htmlOutput
+
+    if {$slash == ""} {
+        # Before opening tag
+        if {$tag == "pre"} {
+            variable INDENT_PRE
+            if {$INDENT_PRE} {
+                # Indent via table
+                append htmlOutput "<table><tr><td>&nbsp;</td><td"
+                # Apply the <pre> style also to the <td>
+                set style [findHtmlElementStyle "pre"]
+                if {$style != ""} {
+                    append htmlOutput " style=\"" $style "\""
+                }
+                append htmlOutput ">"
+            }
+            variable HR_BEFORE_AND_AFTER_PRE
+            if {$HR_BEFORE_AND_AFTER_PRE} {
+                processHtmlElement "hr" "" "" ""
+                processHtmlElement "hr" "/" "" ""
+            }
+        }
+    } else {
+        # Before closing tag
+        if {$tag == "pre"} {
+            variable EXTRA_BREATHING_SPACE_FOR_PRE
+            if {$EXTRA_BREATHING_SPACE_FOR_PRE} {
+                variable htmlOutput
+                append htmlOutput "\n\n"
+            }
+        }
+    }
+
+    if {$tag != "hmstart" && $tag != "style"} {
+
+        append htmlOutput "<" $slash $tag
+
+        if {$slash == ""} {
+            set style [findHtmlElementStyle $tag]
+
+            if {$params != ""} {
+                append htmlOutput " " $params
+                if [regexp {class=\"(.+?)\"} $params matched classes] {
+                    foreach class $classes {
+                        append style [findHtmlElementStyle [string cat "." $class]]
+                        append style [findHtmlElementStyle [string cat $tag "." $class]]
+                    }
+                }
+            }
+            if {$style != ""} {
+                append htmlOutput " style=\"" $style "\""
+            }
+        }
+        append htmlOutput ">" $textBehindTheTag
+    }
+
+    updateHtmlTrail $tag $slash
+
+    if {$slash == ""} {
+        # After opening tag
+        if {$tag == "pre"} {
+            variable EXTRA_BREATHING_SPACE_FOR_PRE
+            if {$EXTRA_BREATHING_SPACE_FOR_PRE} {
+                append htmlOutput "\n"
+            }
+        }
+    } else {
+        # After closing tag
+        if {$tag == "pre"} {
+            variable HR_BEFORE_AND_AFTER_PRE
+            if {$HR_BEFORE_AND_AFTER_PRE} {
+                processHtmlElement "hr" "" "" ""
+                processHtmlElement "hr" "/" "" ""
+            }
+            variable EXTRA_BREATHING_SPACE_FOR_PRE
+            if {$EXTRA_BREATHING_SPACE_FOR_PRE} {
+                processHtmlElement "div" "" "" "&nbsp;"
+                processHtmlElement "div" "/" "" ""
+            }
+            variable INDENT_PRE
+            if {$INDENT_PRE} {
+                # Indent via table
+                append htmlOutput "</td></tr></table>"
+            }
+        }
+        if {$tag == "table"} {
+            variable BR_AFTER_TABLE
+            if {$BR_AFTER_TABLE} {
+                processHtmlElement "br" "" "" ""
+                processHtmlElement "br" "/" "" ""
+            }
+        }
+    }
+}
+
+proc findHtmlElementStyle {lookforSelector} {
+
+    variable htmlStyles
+    set selectors [dict keys $htmlStyles]
+    foreach selector $selectors {
+        set style [dict get $htmlStyles $selector]
+
+        # The matching process starts with the most specific selector and works its way down to the least specific.
+        if {$selector == $lookforSelector} {
+            # Simple `tag` or `.class` or `tag.class` selector without combinators
+            return $style
+        }
+
+        # If the last part of the selector matches, we work backwards through the selector to find parents or ancestors.
+        set selectorTail [lindex $selector end]
+        if {$lookforSelector == $selectorTail} {
+            set count [llength $selector]
+            if {$count == 2} {
+                # Simple descendant combinator
+                set lookforAncestor [lindex $selector 0]
+                variable htmlTrail
+                set index [llength $htmlTrail]
+                while {$index > 0} {
+                    incr index -1
+                    set ancestor [lindex $htmlTrail $index]
+                    if {$ancestor == $lookforAncestor} {
+                        return $style
+                    }
+                }
+            }
+            # puts "findHtmlElementStyle: '$lookforSelector' matches tail of '$selector'"
+        }
+    }
+    # puts "findHtmlElementStyle: '$lookforSelector' not found"
+    return ""
+}
+
+proc processHtmlStyles {styles} {
+
+    # Strip comments, note that the pattern is non greedy.
+    set styles [regsub -all {/\*.*?\*/} $styles ""]
+
+    # Opening braces are encoded as &#123;
+    # Closing braces are encoded as &#125;
+    set openb "&\#123;"
+    set closeb "&\#125;"
+
+    # Let Tcl tokenize it for us, the `openb` functions as a marker for the start of the style.
+    set styles [string map [list $openb " \{$openb" $closeb " \} "] $styles]
+    set openbLength [string length $openb]
+    set selectors ""
+    foreach item $styles {
+        if [startsWith $item $openb] {
+            set selectors [string trim $selectors]
+            set style [string trim $selectors]
+            set style [cleanupStyle [string range $item $openbLength end]]
+            # Ignore @media styles
+            if ![startsWith $selectors "@media "] {
+                variable htmlStyles
+                foreach selector [split $selectors ","] {
+                    # Multiple selectors may be separated by commas
+                    set selector [string trim $selector]
+                    if [dict exists $htmlStyles $selector] {
+                        set style [string cat [dict get $htmlStyles $selector] $style]
+                        dict set htmlStyles $selector $style
+                    } else {
+                        dict append htmlStyles $selector $style
+                    }
+                    # puts "$selector: \{$style\}"
+                }
+            }
+            set selectors ""
+        } else {
+            append selectors " "
+            append selectors $item
+        }
+    }
+}
+
+proc cleanupStyle {style} {
+    set lines [split $style "\n"]
+    set style ""
+    foreach line $lines {
+        append style [string trim $line]
+    }
+    return $style
+}
+
+proc startsWith {string start} {
+    set length [string length $start]
+    if {[string compare -length $length $string $start] == 0} {
+        return 1
+    }
+    return 0
+}
+
+proc execJuice {html outputFile} {
+
+    global argv0
+    set scriptName $argv0
+    set scriptDir [file normalize [file dirname $scriptName]]
+
+    set juiceConfig [string cat $scriptDir "/juice-config.json" ]
+    if ![file isfile $juiceConfig] {
+        throw [list EX InternalError] "Unable to find '$juiceConfig'"
+    }
+
+    set juiceCmd [list "npx" "juice"]
+    lappend juiceCmd "--options-file" $juiceConfig
+
+    # Trick to use stdin as input file.
+    lappend juiceCmd "/dev/fd/0"
+
+    if {$outputFile == ""} {
+
+        # Trick to use `stdout` as output file.
+        exec {*}$juiceCmd <<$html "/dev/fd/1" >@stdout
+    } else {
+        exec {*}$juiceCmd <<$html $outputFile
+    }
+}
+
+proc log {msg} {
+    variable CMDNAME
+    puts "$CMDNAME: $msg"
+}
+
+# The `errorOptions` parameter is the value of the `-options` parameter passed to the `return` command.
+# See: https://www.tcl-lang.org/man/tcl/TclCmd/return.htm#M17.
+# It contains:
+#
+# -code         the value of the `-code` parameter passed to the `return` command.
+# -level        the value of the `-level` parameter passed to the `return` command.
+# -errorcode    the value of the `-errorcode` parameter passed to the `return` command. Also found in the `errorCode` global variable.
+# -errorinfo    the value of the `-errorinfo` parameter passed to the `return` command. Also found in the `errorInfo` global variable.
+# -errorline    the line of the original script passed to the `try` command.
+#
+# See: https://www.tcl.tk/man/tcltutorial/book/html/tutorial-Z-H-8.html#node_sec_3.4.1.1.
+proc logError {errorMessage {errorOptions ""}} {
+    variable CMDNAME
+    puts stderr "$CMDNAME: error: [string trim $errorMessage]"
+
+    variable DEBUG
+    if {$DEBUG && $errorOptions != ""} {
+        try {
+            set errorCode [dict get $errorOptions -errorcode]
+            if {$errorCode != "NONE"} {
+                puts stderr "  $errorCode"
+            }
+        } trap {} {} {
+            # Ignored
+        }
+
+        try {
+            set errorInfo [dict get $errorOptions -errorinfo]
+            # Strip message from first part of errorInfo if present.
+            if {[string first $errorMessage $errorInfo] == 0} {
+                set index [string length $errorMessage]
+                set errorInfo [string range $errorInfo $index end]
+                set errorInfo [string trimleft $errorInfo "\n"]
+            }
+            # Indent for readability.
+            set errorInfo [string map {"\n" "\n  "} $errorInfo]
+            puts stderr "  $errorInfo\n"
+
+        } trap {} {} {
+            # Ignored
+        }
+    }
+}
+
+try {
+    main {*}$::argv
+
+} trap {} {errorMessage errorOptions} {
+    logError $errorMessage $errorOptions
+    exit 1
+}
+
+# End of namespace
+}
+
+# TODO:
+# - Strip <thead> and <tbody> tags.
+# - Consider custom rendering functions,
+#   see: https://emacs.stackexchange.com/questions/56395/enabling-shr-external-rendering-functions-variable-in-eww

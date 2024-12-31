@@ -1,0 +1,19 @@
+{
+    "_comment": "Use with: npx juice --options-file juice-config.json [input] [output]",
+
+    "applyAttributesTableElements": true,
+    "applyHeightAttributes": false,
+    "applyStyleTags": true,
+    "applyWidthAttributes": false,
+    "extraCss": "",
+    "insertPreservedExtraCss": false,
+    "inlinePseudoElements": false,
+    "preserveFontFaces": false,
+    "preserveImportant": false,
+    "preserveMediaQueries": false,
+    "preserveKeyFrames": false,
+    "preservePseudos": false,
+    "removeStyleTags": true,
+    "webResources": {},
+    "xmlMode": false
+}
