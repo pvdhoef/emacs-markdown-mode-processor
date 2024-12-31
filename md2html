@@ -126,8 +126,6 @@ proc main {args} {
         puts $fd $output
         close $fd
     }
-
-    # execJuice $output $outputFile
 }
 
 variable htmlTrail
@@ -367,32 +365,6 @@ proc startsWith {string start} {
         return 1
     }
     return 0
-}
-
-proc execJuice {html outputFile} {
-
-    global argv0
-    set scriptName $argv0
-    set scriptDir [file normalize [file dirname $scriptName]]
-
-    set juiceConfig [string cat $scriptDir "/juice-config.json" ]
-    if ![file isfile $juiceConfig] {
-        throw [list EX InternalError] "Unable to find '$juiceConfig'"
-    }
-
-    set juiceCmd [list "npx" "juice"]
-    lappend juiceCmd "--options-file" $juiceConfig
-
-    # Trick to use stdin as input file.
-    lappend juiceCmd "/dev/fd/0"
-
-    if {$outputFile == ""} {
-
-        # Trick to use `stdout` as output file.
-        exec {*}$juiceCmd <<$html "/dev/fd/1" >@stdout
-    } else {
-        exec {*}$juiceCmd <<$html $outputFile
-    }
 }
 
 proc log {msg} {
