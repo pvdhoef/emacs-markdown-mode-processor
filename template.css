@@ -1,4 +1,4 @@
-/* CSS Template for Pandoc
+/* CSS Template for Pandoc used by the `md2html` tool.
  *
  * Based on `pandoc --print-default-data-file templates/styles.html`.
  */
@@ -154,4 +154,4 @@ ${ if(csl-css) }
 ${ styles.citations.html() }
 ${ endif }
 
-/* End of CSS Template for Pandoc */
+/* End of CSS Template */

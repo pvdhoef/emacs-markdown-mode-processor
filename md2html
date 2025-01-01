@@ -1,13 +1,7 @@
 #!/usr/local/bin/tclsh
 
-# Tool that can be configured with Emacs Markdown Mode via its `markdown-command`.
-# Pandoc and gfm have different conventions around document titles.
-# See: https://stackoverflow.com/questions/17097894/markdown-tag-for-document-title.
-
-# https://emacs.stackexchange.com/questions/2955/how-to-customize-background-color-for-some-web-pages-opened-with-eww
-
-# Alternative css inliners:
-# - https://pypi.org/project/css-inline/
+# Converts Markdown to HTML via Pandoc and tweaks the output a bit so it looks good in the
+# [Emacs Web Wowser (EWW)](https://www.gnu.org/software/emacs/manual/html_mono/eww.html).
 
 namespace eval ::Main {
 
@@ -429,5 +423,4 @@ try {
 
 # TODO:
 # - Strip <thead> and <tbody> tags.
-# - Consider custom rendering functions,
-#   see: https://emacs.stackexchange.com/questions/56395/enabling-shr-external-rendering-functions-variable-in-eww
+# - Consider custom rendering functions, see: https://emacs.stackexchange.com/q/56395.
