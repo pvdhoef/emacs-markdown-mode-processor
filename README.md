@@ -14,11 +14,10 @@ The following tools must be installed and accessible from the command line:
 
 ## Installation
 
-Open a terminal, change the current working directory to the desired parent directory for this project,
-and issue the following command:
+Issue the following command:
 
 ```sh
-git clone https://github.com/pvdhoef/emacs-markdown-mode-processor
+git clone https://github.com/pvdhoef/emacs-markdown-mode-processor /path/to/emacs-markdown-mode-processor
 ```
 
 Add the following to the Emacs configuration file `init.el`:
