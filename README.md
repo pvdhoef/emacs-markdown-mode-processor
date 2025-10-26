@@ -14,20 +14,22 @@ The following tools must be installed and accessible from the command line:
 
 ## Installation
 
-Issue the following command:
+1.  Issue the following command:
 
-```sh
-git clone https://github.com/pvdhoef/emacs-markdown-mode-processor /path/to/emacs-markdown-mode-processor
-```
+    ```sh
+    git clone https://github.com/pvdhoef/emacs-markdown-mode-processor /path/to/emacs-markdown-mode-processor
+    ```
 
-Add the following to the Emacs configuration file `init.el`:
+    Obviously, replace `/path/to/emacs-markdown-mode-processor` with the desired installation directory.
 
-```lisp
-(setq markdown-command "/path/to/emacs-markdown-mode-processor/md2html")
-```
+2.  Add the following to the Emacs configuration file `init.el`:
 
-Make sure that the full path to `md2html` is specified.
-The tool uses a number of other files in the same directory and should be able to find them.
+    ```lisp
+    (setq markdown-command "/path/to/emacs-markdown-mode-processor/md2html")
+    ```
+
+    Make sure that the full path to `md2html` is specified.
+    The tool uses a number of other files in the same directory and should be able to find them.
 
 ## Configuration
 
